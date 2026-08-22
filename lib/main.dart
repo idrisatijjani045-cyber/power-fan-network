@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'POWER FAN NETWORK',
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF7F9FC),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         fontFamily: 'Roboto',
       ),
       home: const MiningHomeScreen(),
@@ -40,7 +40,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row (AFAM, POWER FAN NETWORK, Notification Icon - No Solana Icon)
+              // Header Row (AFAM, POWER FAN NETWORK, Notification Icon)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -94,13 +94,13 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Balance Banner Card
+              // Balance Banner Card with Character Circle Design
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF0D0844), Color(0xFF2E1065)],
+                    colors: [Color(0xFF0F0B52), Color(0xFF2E1065)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -116,7 +116,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             'BALANCE',
                             style: TextStyle(
                               color: Colors.white70,
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1,
                             ),
@@ -130,14 +130,14 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                                   color: Colors.amber,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.star, size: 18, color: Colors.white),
+                                child: const Icon(Icons.star, size: 16, color: Colors.white),
                               ),
                               const SizedBox(width: 8),
                               const Text(
                                 '0.0000',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 28,
+                                  fontSize: 26,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -146,7 +146,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                                 'FAN',
                                 style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -157,26 +157,46 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             '≈ \$0.00',
                             style: TextStyle(
                               color: Colors.white60,
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Mining Character Placeholder Icon
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white24, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.engineering_rounded,
-                        size: 45,
-                        color: Colors.amber,
-                      ),
+                    
+                    // Miner Character Badge Avatar
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 75,
+                          height: 75,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
+                            border: Border.all(color: Colors.purpleAccent.withOpacity(0.5), width: 2),
+                          ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.face_5_rounded, size: 40, color: Colors.amberAccent),
+                            Icon(Icons.hardware, size: 16, color: Colors.white70),
+                          ],
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF6B21A8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Text('K', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
+                          ),
+                        )
+                      ],
                     ),
                   ],
                 ),
@@ -200,7 +220,6 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Status Row
                     Row(
                       children: [
                         Container(
@@ -209,7 +228,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             color: const Color(0xFFF3E8FF),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.hardware, color: Color(0xFF6B21A8), size: 28),
+                          child: const Icon(Icons.hardware, color: Color(0xFF6B21A8), size: 26),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -219,13 +238,13 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                               children: const [
                                 Text(
                                   'STATUS: ',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                 ),
                                 Text(
                                   'READY',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     color: Colors.green,
                                   ),
                                 ),
@@ -234,7 +253,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             const SizedBox(height: 2),
                             const Text(
                               'Start mining to earn FAN',
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style: TextStyle(color: Colors.grey, fontSize: 11),
                             ),
                           ],
                         ),
@@ -242,33 +261,32 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Rate & Session Time
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.speed, color: Color(0xFF4C1D95), size: 24),
+                            const Icon(Icons.speed, color: Color(0xFF4C1D95), size: 22),
                             const SizedBox(width: 8),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
-                                Text('MINING RATE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                Text('0.4 FAN/H', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95))),
+                                Text('MINING RATE', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                Text('0.4 FAN/H', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95))),
                               ],
                             ),
                           ],
                         ),
-                        Container(height: 24, width: 1, color: Colors.grey.shade300),
+                        Container(height: 22, width: 1, color: Colors.grey.shade300),
                         Row(
                           children: [
-                            const Icon(Icons.access_time_rounded, color: Color(0xFF4C1D95), size: 24),
+                            const Icon(Icons.access_time_rounded, color: Color(0xFF4C1D95), size: 22),
                             const SizedBox(width: 8),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
-                                Text('SESSION TIME', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                Text('00:00:00 / 24:00:00', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
+                                Text('SESSION TIME', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                Text('00:00:00 / 24:00:00', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
                               ],
                             ),
                           ],
@@ -277,16 +295,15 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Start Mining Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton.icon(
                         onPressed: () {},
-                        icon: const Icon(Icons.hardware, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.hardware, color: Colors.white, size: 18),
                         label: const Text(
                           'START MINING',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2E1065),
@@ -321,7 +338,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             color: Colors.red.shade50,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.rocket_launch, color: Colors.redAccent, size: 24),
+                          child: const Icon(Icons.rocket_launch, color: Colors.redAccent, size: 22),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -330,19 +347,19 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             children: const [
                               Text(
                                 'BOOST BY WATCHING ADS',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                               Text(
                                 'Each ad adds +0.1 FAN/H',
-                                style: TextStyle(color: Colors.grey, fontSize: 11),
+                                style: TextStyle(color: Colors.grey, fontSize: 10),
                               ),
                             ],
                           ),
                         ),
                         ElevatedButton.icon(
                           onPressed: () {},
-                          icon: const Icon(Icons.play_circle_fill, size: 16),
-                          label: const Text('WATCH AD', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.play_circle_fill, size: 14),
+                          label: const Text('WATCH AD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2E1065),
                             foregroundColor: Colors.white,
@@ -357,8 +374,8 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: const [
-                        Text('Ads watched today: 0 / 7', style: TextStyle(color: Color(0xFF4C1D95), fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text('+0.0 FAN/H', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('Ads watched today: 0 / 7', style: TextStyle(color: Color(0xFF4C1D95), fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text('+0.0 FAN/H', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -376,7 +393,7 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Daily Task Section
+              // Daily Task Section with Colored Social Icons
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -395,27 +412,28 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                             color: Colors.green.shade50,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.assignment_turned_in_rounded, color: Colors.green, size: 24),
+                          child: const Icon(Icons.assignment_turned_in_rounded, color: Colors.green, size: 22),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: const [
-                              Text('DAILY TASK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              Text('Follow us on social media\nFollow and get 50 FAN reward', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                              Text('DAILY TASK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                              Text('Follow us on social media\nFollow and get 50 FAN reward', style: TextStyle(color: Colors.grey, fontSize: 10)),
                             ],
                           ),
                         ),
+                        // Colored Social Icons (X, Telegram, Instagram, YouTube)
                         Row(
                           children: [
-                            _socialIcon(Icons.close), // X
+                            _socialBadge(Icons.close, Colors.black, Colors.white), // X
                             const SizedBox(width: 4),
-                            _socialIcon(Icons.send), // Telegram
+                            _socialBadge(Icons.send, const Color(0xFF29B6F6), Colors.white), // Telegram
                             const SizedBox(width: 4),
-                            _socialIcon(Icons.camera_alt), // Instagram
+                            _socialBadge(Icons.camera_alt, const Color(0xFFE1306C), Colors.white), // Instagram
                             const SizedBox(width: 4),
-                            _socialIcon(Icons.play_arrow), // YouTube
+                            _socialBadge(Icons.play_arrow, Colors.red, Colors.white), // YouTube
                           ],
                         ),
                       ],
@@ -425,11 +443,12 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                       alignment: Alignment.centerRight,
                       child: OutlinedButton.icon(
                         onPressed: () {},
-                        icon: const Icon(Icons.card_giftcard, size: 16, color: Color(0xFF2E1065)),
-                        label: const Text('FOLLOW & EARN 50 FAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2E1065))),
+                        icon: const Icon(Icons.card_giftcard, size: 14, color: Color(0xFF2E1065)),
+                        label: const Text('FOLLOW & EARN 50 FAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2E1065))),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF2E1065)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
                       ),
                     ),
@@ -451,18 +470,18 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
+                        color: Colors.indigo.shade50,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.shield_outlined, color: Color(0xFF6B21A8), size: 24),
+                      child: const Icon(Icons.shield_outlined, color: Color(0xFF312E81), size: 24),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Text('KYC VERIFICATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text('Verify your identity to secure your account', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                          Text('KYC VERIFICATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text('Verify your identity to secure your account', style: TextStyle(color: Colors.grey, fontSize: 10)),
                         ],
                       ),
                     ),
@@ -471,11 +490,12 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFF2E1065)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       child: Row(
                         children: const [
-                          Text('COMPLETE KYC', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2E1065))),
-                          Icon(Icons.chevron_right, size: 14, color: Color(0xFF2E1065)),
+                          Text('COMPLETE KYC', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF2E1065))),
+                          Icon(Icons.chevron_right, size: 12, color: Color(0xFF2E1065)),
                         ],
                       ),
                     ),
@@ -528,14 +548,14 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
     );
   }
 
-  Widget _socialIcon(IconData icon) {
+  Widget _socialBadge(IconData icon, Color bgColor, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: bgColor,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 14, color: const Color(0xFF1E1B4B)),
+      child: Icon(icon, size: 12, color: iconColor),
     );
   }
 }
