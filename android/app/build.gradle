@@ -2,11 +2,10 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
 }
 
 android {
-    namespace "com.example.power_fan_network"
+    namespace "com.fanmining.app"
     compileSdk 36
     ndkVersion "28.2.13676358"
 
@@ -20,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.power_fan_network"
+        applicationId "com.fanmining.app"
         minSdk 21
         targetSdk 36
         versionCode 1
@@ -34,3 +33,5 @@ android {
         }
     }
 }
+
+apply plugin: 'com.google.gms.google-services'
