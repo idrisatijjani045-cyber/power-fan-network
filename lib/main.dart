@@ -57,8 +57,8 @@ class _MiningHomeScreenState extends State<MiningHomeScreen> {
                       Text(
                         'POWER FAN NETWORK',
                         style: TextStyle(
-                          fontWeight: FontWeight.black,
-                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
                           color: Color(0xFF1E1B4B),
                           letterSpacing: 0.5,
                         ),
