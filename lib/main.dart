@@ -40,7 +40,7 @@ class HomeScreen extends StatelessWidget {
       body: const Center(
         child: Text(
           'Barka da Zuwa Power Fan Network!',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
