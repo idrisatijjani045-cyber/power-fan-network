@@ -27,6 +27,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Get Dependencies
+        run: flutter pub get
+
       - name: Build Android APK
         run: flutter build apk --release --android-skip-build-dependency-validation
 
