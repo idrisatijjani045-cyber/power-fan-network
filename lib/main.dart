@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  String _currentLanguage = 'English';
+
+  void _changeLanguage(String lang) {
+    setState(() {
+      _currentLanguage = lang;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,16 +33,296 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'POWER FAN NETWORK',
       theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         fontFamily: 'Roboto',
       ),
-      home: const MainNavigationHub(),
+      home: FirebaseAuth.instance.currentUser == null
+          ? AuthScreen(
+              currentLanguage: _currentLanguage,
+              onLanguageChanged: _changeLanguage,
+            )
+          : MainNavigationHub(
+              currentLanguage: _currentLanguage,
+              onLanguageChanged: _changeLanguage,
+            ),
     );
   }
 }
 
+// ==========================================
+// TRANSLATIONS
+// ==========================================
+class AppTranslations {
+  static final Map<String, Map<String, String>> _localizedValues = {
+    'English': {
+      'app_title': 'POWER FAN NETWORK',
+      'sub_title': 'Mine FAN. Earn More',
+      'login': 'Login',
+      'register': 'Register',
+      'email': 'Email Address',
+      'password': 'Password',
+      'username': 'Username',
+      'welcome_back': 'Welcome Back',
+      'create_account': 'Create New Account',
+      'start_mining': 'START 24H MINING',
+      'mining_active': 'MINING IS ACTIVE',
+      'fan_balance': 'LIVE FAN BALANCE',
+      'mining_rate': 'MINING RATE',
+      'session_time': 'REMAINING TIME',
+      'daily_checkin': 'DAILY CHECK-IN STREAK',
+      'claim_daily': 'CLAIM DAILY CHECK-IN (+2 FAN)',
+      'social_tasks': 'OFFICIAL SOCIAL MEDIA TASKS (STRICT VERIFY)',
+      'kyc_tiers': 'KYC VERIFICATION TIERS',
+      'device_sec': 'Device Security: 1 Device = 1 Account Only',
+      'visit': 'VISIT PAGE',
+      'confirm': 'CONFIRM',
+      'done': '✓ VERIFIED',
+      'wallet': 'AFAM WALLET',
+      'referral': 'REFERRAL PROGRAM',
+      'settings': 'SETTINGS',
+      'home': 'HOME',
+      'logout': 'LOGOUT',
+    },
+    'Spanish': {
+      'app_title': 'RED POWER FAN',
+      'sub_title': 'Mina FAN. Gana Más',
+      'login': 'Iniciar Sesión',
+      'register': 'Registrarse',
+      'email': 'Correo Electrónico',
+      'password': 'Contraseña',
+      'username': 'Nombre de usuario',
+      'welcome_back': 'Bienvenido de Nuevo',
+      'create_account': 'Crear Nueva Cuenta',
+      'start_mining': 'INICIAR MINERÍA 24H',
+      'mining_active': 'MINERÍA ACTIVA',
+      'fan_balance': 'SALDO FAN EN VIVO',
+      'mining_rate': 'TASA DE MINERÍA',
+      'session_time': 'TIEMPO RESTANTE',
+      'daily_checkin': 'REGISTRO DIARIO',
+      'claim_daily': 'RECLAMAR REGISTRO (+2 FAN)',
+      'social_tasks': 'TAREAS SOCIALES (VERIFICACIÓN ESTRICTA)',
+      'kyc_tiers': 'NIVELES DE VERIFICACIÓN KYC',
+      'device_sec': 'Seguridad: 1 Dispositivo = 1 Cuenta',
+      'visit': 'VISITAR',
+      'confirm': 'CONFIRMAR',
+      'done': '✓ VERIFICADO',
+      'wallet': 'BILLETERA AFAM',
+      'referral': 'REFERIDOS',
+      'settings': 'AJUSTES',
+      'home': 'INICIO',
+      'logout': 'CERRAR SESIÓN',
+    },
+  };
+
+  static String text(String lang, String key) {
+    return _localizedValues[lang]?[key] ?? _localizedValues['English']?[key] ?? key;
+  }
+}
+
+// ==========================================
+// AUTH SCREEN WITH FIREBASE AUTH
+// ==========================================
+class AuthScreen extends StatefulWidget {
+  final String currentLanguage;
+  final Function(String) onLanguageChanged;
+
+  const AuthScreen({
+    super.key,
+    required this.currentLanguage,
+    required this.onLanguageChanged,
+  });
+
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool isLogin = true;
+  bool isLoading = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseDatabase _db = FirebaseDatabase.instance;
+
+  Future<void> _submitAuth() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    String username = _usernameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || (!isLogin && username.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields!')),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      if (isLogin) {
+        await _auth.signInWithEmailAndPassword(email: email, password: password);
+      } else {
+        UserCredential credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+        String uid = credential.user!.uid;
+
+        // Save User Data in Firebase Realtime Database
+        await _db.ref("users/$uid").set({
+          "username": username,
+          "email": email,
+          "fanBalance": 20.0,
+          "afamBalance": 0.0,
+          "dailyStreak": 0,
+          "kyc1": false,
+          "kyc2": false,
+          "lastMiningStart": 0,
+          "referrals": 0,
+        });
+      }
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainNavigationHub(
+              currentLanguage: widget.currentLanguage,
+              onLanguageChanged: widget.onLanguageChanged,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String lang = widget.currentLanguage;
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppTranslations.text(lang, 'app_title'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E1B4B))),
+                  DropdownButton<String>(
+                    value: widget.currentLanguage,
+                    underline: const SizedBox(),
+                    icon: const Icon(Icons.language, color: Color(0xFF1E1B4B)),
+                    onChanged: (String? val) {
+                      if (val != null) widget.onLanguageChanged(val);
+                    },
+                    items: ['English', 'Spanish'].map((String value) {
+                      return DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
+                    }).toList(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.bolt_rounded, size: 70, color: Color(0xFF2E1065)),
+                    const SizedBox(height: 10),
+                    Text(
+                      isLogin ? AppTranslations.text(lang, 'welcome_back') : AppTranslations.text(lang, 'create_account'),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B)),
+                    ),
+                    Text(AppTranslations.text(lang, 'sub_title'), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              if (!isLogin) ...[
+                TextField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: AppTranslations.text(lang, 'username'),
+                    prefixIcon: const Icon(Icons.person),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: AppTranslations.text(lang, 'email'),
+                  prefixIcon: const Icon(Icons.email),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: AppTranslations.text(lang, 'password'),
+                  prefixIcon: const Icon(Icons.lock),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : _submitAuth,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E1065),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          isLogin ? AppTranslations.text(lang, 'login') : AppTranslations.text(lang, 'register'),
+                          style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() => isLogin = !isLogin),
+                  child: Text(
+                    isLogin ? "Don't have an account? Register" : "Already have an account? Login",
+                    style: const TextStyle(color: Color(0xFF4338CA), fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// MAIN HUB WITH FIREBASE REALTIME ENGINE
+// ==========================================
 class MainNavigationHub extends StatefulWidget {
-  const MainNavigationHub({super.key});
+  final String currentLanguage;
+  final Function(String) onLanguageChanged;
+
+  const MainNavigationHub({
+    super.key,
+    required this.currentLanguage,
+    required this.onLanguageChanged,
+  });
 
   @override
   State<MainNavigationHub> createState() => _MainNavigationHubState();
@@ -31,542 +330,196 @@ class MainNavigationHub extends StatefulWidget {
 
 class _MainNavigationHubState extends State<MainNavigationHub> {
   int _selectedIndex = 0;
+  final User? user = FirebaseAuth.instance.currentUser;
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
-  // App Global State
-  double fanBalance = 20.0; // Welcome Bonus 20 FAN
+  String username = "User";
+  double fanBalance = 20.0;
   double afamBalance = 0.0;
-  double baseMiningRate = 0.4;
-  int activeReferrals = 0;
-  int totalReferrals = 0;
-  int dailyCheckInDays = 0; // Check-in Streak Counter
+  int dailyStreak = 0;
+  bool kyc1 = false;
+  bool kyc2 = false;
+  int lastMiningStart = 0;
 
-  // Languages
-  String selectedLanguage = 'English';
-  final List<String> languages = [
-    'English', 'Hausa', 'Arabic', 'Spanish', 'French', 
-    'Chinese', 'Hindi', 'Portuguese', 'Russian', 'Swahili'
-  ];
+  bool isMiningActive = false;
+  int remainingSeconds = 86400;
+  Timer? _tickerTimer;
 
-  // KYC States
-  bool kyc1FaceCompleted = false;
-  bool kyc2GovIdCompleted = false;
-  bool isWalletUnlocked = false;
+  // Strict Tasks Tracker
+  bool fbDone = false, ytDone = false, ttDone = false, xDone = false, tgDone = false, igDone = false;
+  bool fbVisited = false, ytVisited = false, ttVisited = false, xVisited = false, tgVisited = false, igVisited = false;
 
-  // Social Tasks Completed Status
-  bool fbFollowed = false;
-  bool ytSubscribed = false;
-  bool ttFollowed = false;
-  bool xFollowed = false;
-  bool tgJoined = false;
-  bool igFollowed = false;
-
-  // Social Links
-  final String fbUrl = "https://www.facebook.com/share/18ipQKYcCV/";
-  final String ytUrl = "https://youtube.com/@powerfannetwork?si=yHAa0uXznTHB4Sf";
-  final String ttUrl = "https://www.tiktok.com/@power.fan.network?_r=1&_t=ZP-98wsX6qxjV";
-  final String xUrl = "https://x.com/Powerfannetwor";
-  final String tgUrl = "https://t.me/PowerFannetwor";
-  final String igUrl = "https://www.instagram.com/powerfannetwok/";
-
-  Future<void> _launchSocialUrl(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      debugPrint("Could not launch $url");
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadUserDataFromFirebase();
   }
 
-  bool areAllSocialTasksDone() {
-    return fbFollowed && ytSubscribed && ttFollowed && xFollowed && tgJoined && igFollowed;
+  void _loadUserDataFromFirebase() {
+    if (user == null) return;
+
+    _dbRef.child("users/${user!.uid}").onValue.listen((event) {
+      if (event.snapshot.exists) {
+        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+        setState(() {
+          username = data["username"] ?? "User";
+          fanBalance = (data["fanBalance"] ?? 20.0).toDouble();
+          afamBalance = (data["afamBalance"] ?? 0.0).toDouble();
+          dailyStreak = data["dailyStreak"] ?? 0;
+          kyc1 = data["kyc1"] ?? false;
+          kyc2 = data["kyc2"] ?? false;
+          lastMiningStart = data["lastMiningStart"] ?? 0;
+        });
+
+        _checkMiningStatus();
+      }
+    });
   }
 
-  void _convertFanToAfam() {
-    if (kyc1FaceCompleted && kyc2GovIdCompleted && totalReferrals >= 5 && areAllSocialTasksDone()) {
+  void _checkMiningStatus() {
+    int nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    int passed = nowSeconds - lastMiningStart;
+
+    if (passed < 86400 && lastMiningStart > 0) {
       setState(() {
-        isWalletUnlocked = true;
-        afamBalance += fanBalance / 100.0;
-        fanBalance = 0.0;
+        isMiningActive = true;
+        remainingSeconds = 86400 - passed;
+      });
+      _startLocalTicker();
+    } else {
+      setState(() {
+        isMiningActive = false;
       });
     }
   }
 
-  void _showAdAndClaimMining() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('WATCH AD TO CLAIM'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.ondemand_video_rounded, size: 50, color: Colors.purple),
-            SizedBox(height: 10),
-            Text('Simulating Video Ad playback... Please wait.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                fanBalance += (baseMiningRate * 24);
-                _convertFanToAfam();
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Reward claimed successfully!')),
-              );
-            },
-            child: const Text('CLOSE AD & CLAIM REWARD'),
-          )
-        ],
-      ),
-    );
+  void _startLocalTicker() {
+    _tickerTimer?.cancel();
+    _tickerTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remainingSeconds > 0) {
+        setState(() {
+          remainingSeconds--;
+          fanBalance += (0.4 / 3600.0); // 0.4 FAN per hour rate
+        });
+      } else {
+        timer.cancel();
+        setState(() => isMiningActive = false);
+        _saveBalanceToFirebase();
+      }
+    });
+  }
+
+  void _saveBalanceToFirebase() {
+    if (user != null) {
+      _dbRef.child("users/${user!.uid}").update({"fanBalance": fanBalance});
+    }
+  }
+
+  void _startMiningSession() async {
+    int nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    if (user != null) {
+      await _dbRef.child("users/${user!.uid}").update({
+        "lastMiningStart": nowSeconds,
+      });
+      _checkMiningStatus();
+    }
+  }
+
+  Future<void> _openSocialLink(String url, Function onVisited) async {
+    final Uri uri = Uri.parse(url);
+    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      Future.delayed(const Duration(seconds: 4), () {
+        setState(() => onVisited());
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tickerTimer?.cancel();
+    _saveBalanceToFirebase();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    double currentRate = baseMiningRate + (activeReferrals * 0.02);
-
-    final List<Widget> screens = [
-      _buildHomeScreen(currentRate),
-      _buildReferralScreen(),
-      _buildWalletScreen(),
-      _buildSettingsScreen(),
-    ];
+    String lang = widget.currentLanguage;
 
     return Scaffold(
-      body: SafeArea(child: screens[_selectedIndex]),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF2E1065),
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'HOME'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'REFERRAL'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_outlined), label: 'WALLET'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'SETTINGS'),
-        ],
-      ),
-    );
-  }
-
-  // --- 1. HOME SCREEN ---
-  Widget _buildHomeScreen(double currentRate) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with Language Selector
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('AFAM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E1B4B))),
-              Column(
-                children: const [
-                  Text('POWER FAN NETWORK', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF1E1B4B), letterSpacing: 0.5)),
-                  Text('Mine FAN. Earn More', style: TextStyle(fontSize: 12, color: Color(0xFF4338CA), fontWeight: FontWeight.w500)),
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('@$username', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AuthScreen(
+                              currentLanguage: widget.currentLanguage,
+                              onLanguageChanged: widget.onLanguageChanged,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  )
                 ],
               ),
-              DropdownButton<String>(
-                value: selectedLanguage,
-                underline: const SizedBox(),
-                icon: const Icon(Icons.language, color: Color(0xFF1E1B4B), size: 20),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedLanguage = newValue;
-                    });
-                  }
-                },
-                items: languages.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-          // Security Device Banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-            child: Row(
-              children: const [
-                Icon(Icons.security, size: 14, color: Colors.blue),
-                SizedBox(width: 6),
-                Text('Device Security Active: 1 Device = 1 Account Only', style: TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Balance Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF0F0B52), Color(0xFF2E1065)], begin: Alignment.centerLeft, end: Alignment.centerRight),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('FAN BALANCE', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, size: 18, color: Colors.amber),
-                          const SizedBox(width: 6),
-                          Text(fanBalance.toStringAsFixed(4), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 6),
-                          const Text('FAN', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text('≈ \$${(fanBalance * 0.01).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
-                  child: const Icon(Icons.engineering_rounded, size: 40, color: Colors.amberAccent),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // 24H Mining Control Box
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        const Text('MINING RATE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                        Text('${currentRate.toStringAsFixed(2)} FAN/H', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95))),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        const Text('SESSION TIME', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                        const Text('24:00:00 Hours', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton.icon(
-                    onPressed: _showAdAndClaimMining,
-                    icon: const Icon(Icons.play_circle_fill, color: Colors.white, size: 18),
-                    label: const Text('START 24H MINING (WATCH AD)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E1065), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Daily Check-in Progress Box
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('DAILY CHECK-IN STREAK', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1E1B4B))),
-                    Text('$dailyCheckInDays Days Completed', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      dailyCheckInDays++;
-                      fanBalance += 2;
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, minimumSize: const Size(double.infinity, 36)),
-                  child: const Text('CLAIM DAILY CHECK-IN (+2 FAN)', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Official Social Media Tasks
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('OFFICIAL SOCIAL MEDIA TASKS (REQUIRED FOR KYC)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF1E1B4B))),
-                const SizedBox(height: 10),
-                _socialTaskTile('Facebook Page', fbUrl, fbFollowed, () => setState(() => fbFollowed = true)),
-                _socialTaskTile('YouTube Channel', ytUrl, ytSubscribed, () => setState(() => ytSubscribed = true)),
-                _socialTaskTile('TikTok Profile', ttUrl, ttFollowed, () => setState(() => ttFollowed = true)),
-                _socialTaskTile('X (Twitter)', xUrl, xFollowed, () => setState(() => xFollowed = true)),
-                _socialTaskTile('Telegram Community', tgUrl, tgJoined, () => setState(() => tgJoined = true)),
-                _socialTaskTile('Instagram Page', igUrl, igFollowed, () => setState(() => igFollowed = true)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // KYC Tier Status Box
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('KYC VERIFICATION TIERS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 8),
-                _kycRow('KYC 1: Face (Requires 14 Days Check-in & Tasks)', dailyCheckInDays >= 14 && areAllSocialTasksDone(), kyc1FaceCompleted, () {
-                  if (dailyCheckInDays >= 14 && areAllSocialTasksDone()) {
-                    setState(() {
-                      kyc1FaceCompleted = true;
-                      _convertFanToAfam();
-                    });
-                  }
-                }),
-                const Divider(),
-                _kycRow('KYC 2: Gov ID (Requires 60 Days Check-in)', dailyCheckInDays >= 60, kyc2GovIdCompleted, () {
-                  if (dailyCheckInDays >= 60) {
-                    setState(() {
-                      kyc2GovIdCompleted = true;
-                      _convertFanToAfam();
-                    });
-                  }
-                }),
-                const Divider(),
-                const ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Biometric Verification', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  subtitle: Text('Locked (Will be unlocked by Admin in future update)', style: TextStyle(fontSize: 9, color: Colors.red)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _socialTaskTile(String title, String url, bool isDone, VoidCallback onComplete) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-          Row(
-            children: [
-              OutlinedButton(
-                onPressed: () => _launchSocialUrl(url),
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(50, 26)),
-                child: const Text('VISIT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 6),
-              ElevatedButton(
-                onPressed: isDone ? null : onComplete,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDone ? Colors.green : const Color(0xFF2E1065),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(60, 26),
-                ),
-                child: Text(isDone ? '✓ DONE' : 'CONFIRM', style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
-              )
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _kycRow(String title, bool isEligible, bool isDone, VoidCallback onTap) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(child: Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isDone ? Colors.green : Colors.black87))),
-        if (isDone)
-          const Icon(Icons.check_circle, color: Colors.green, size: 18)
-        else if (isEligible)
-          TextButton(onPressed: onTap, child: const Text('VERIFY NOW', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF2E1065))))
-        else
-          const Text('LOCKED', style: TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  // --- 2. REFERRAL SCREEN ---
-  Widget _buildReferralScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('REFERRAL PROGRAM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E1B4B))),
-          const SizedBox(height: 6),
-          const Text('Invite friends to get 5 FAN instant bonus + 0.02 FAN/H mining boost per active referral!', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Total Referrals:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('$totalReferrals / 5 required for Migration', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E1065))),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      totalReferrals++;
-                      activeReferrals++;
-                      fanBalance += 5;
-                      _convertFanToAfam();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E1065)),
-                  child: const Text('SIMULATE INVITE FRIEND (+5 FAN)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  // --- 3. WALLET SCREEN ---
-  Widget _buildWalletScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('AFAM WALLET', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E1B4B))),
+              // Live Balance Card
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: isWalletUnlocked ? Colors.green.shade100 : Colors.red.shade100, borderRadius: BorderRadius.circular(12)),
-                child: Text(isWalletUnlocked ? 'UNLOCKED' : 'LOCKED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isWalletUnlocked ? Colors.green : Colors.red)),
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF0F0B52), Color(0xFF2E1065)]),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(AppTranslations.text(lang, 'fan_balance'), style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                    const SizedBox(height: 6),
+                    Text('${fanBalance.toStringAsFixed(6)} FAN',
+                        style: const TextStyle(color: Colors.amberAccent, fontSize: 26, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Mining Control
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    Text(isMiningActive ? 'Time Remaining: $remainingSeconds sec' : 'Session Inactive', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isMiningActive ? null : _startMiningSession,
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E1065)),
+                        child: Text(isMiningActive ? 'MINING IN PROGRESS...' : 'START 24H MINING SESSION', style: const TextStyle(color: Colors.white)),
+                      ),
+                    )
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // AFAM Balance Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1E1B4B), Color(0xFF4338CA)]),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('AFAM COIN BALANCE', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text('${afamBalance.toStringAsFixed(4)} AFAM', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                const Text('Username / Address: @user_afam_01', style: TextStyle(color: Colors.white60, fontSize: 12)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          if (!isWalletUnlocked) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.amber)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Wallet Locked Requirements:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber, fontSize: 13)),
-                  SizedBox(height: 6),
-                  Text('1. Complete KYC 1 (Face + 14 Days Check-in + Social Tasks)\n2. Complete KYC 2 (Gov ID + 60 Days Check-in)\n3. Invite at least 5 Active Referrals\n\nOnce completed, all FAN coins convert to AFAM (100 FAN = 1 AFAM) automatically.', style: TextStyle(fontSize: 11, color: Colors.black87)),
-                ],
-              ),
-            )
-          ] else ...[
-            const Text('SEND & RECEIVE AFAM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 10),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Enter Username or Wallet Address',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E1065)),
-                child: const Text('TRANSFER AFAM COINS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            )
-          ]
-        ],
-      ),
-    );
-  }
-
-  // --- 4. SETTINGS SCREEN ---
-  Widget _buildSettingsScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('SETTINGS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1E1B4B))),
-          const SizedBox(height: 16),
-          const ListTile(leading: Icon(Icons.person), title: Text('Username'), subtitle: Text('@user_afam_01')),
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('App Language'),
-            subtitle: Text(selectedLanguage),
-          ),
-          const ListTile(leading: Icon(Icons.security), title: Text('Security & Device ID Check')),
-          const ListTile(leading: Icon(Icons.help_outline), title: Text('Help & Support')),
-        ],
+        ),
       ),
     );
   }
