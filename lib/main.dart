@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 
 void main() async {
@@ -35,17 +37,26 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        fontFamily: 'Roboto',
+        textTheme: GoogleFonts.robotoTextTheme(Theme.of(context).textTheme),
       ),
-      home: FirebaseAuth.instance.currentUser == null
-          ? AuthScreen(
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
+          if (snapshot.hasData) {
+            return MainNavigationHub(
               currentLanguage: _currentLanguage,
               onLanguageChanged: _changeLanguage,
-            )
-          : MainNavigationHub(
-              currentLanguage: _currentLanguage,
-              onLanguageChanged: _changeLanguage,
-            ),
+            );
+          }
+          return AuthScreen(
+            currentLanguage: _currentLanguage,
+            onLanguageChanged: _changeLanguage,
+          );
+        },
+      ),
     );
   }
 }
@@ -68,20 +79,7 @@ class AppTranslations {
       'start_mining': 'START 24H MINING',
       'mining_active': 'MINING IS ACTIVE',
       'fan_balance': 'LIVE FAN BALANCE',
-      'mining_rate': 'MINING RATE',
-      'session_time': 'REMAINING TIME',
-      'daily_checkin': 'DAILY CHECK-IN STREAK',
-      'claim_daily': 'CLAIM DAILY CHECK-IN (+2 FAN)',
-      'social_tasks': 'OFFICIAL SOCIAL MEDIA TASKS (STRICT VERIFY)',
-      'kyc_tiers': 'KYC VERIFICATION TIERS',
-      'device_sec': 'Device Security: 1 Device = 1 Account Only',
-      'visit': 'VISIT PAGE',
-      'confirm': 'CONFIRM',
-      'done': '✓ VERIFIED',
-      'wallet': 'AFAM WALLET',
-      'referral': 'REFERRAL PROGRAM',
-      'settings': 'SETTINGS',
-      'home': 'HOME',
+      'remaining_time': 'REMAINING TIME',
       'logout': 'LOGOUT',
     },
     'Spanish': {
@@ -97,20 +95,7 @@ class AppTranslations {
       'start_mining': 'INICIAR MINERÍA 24H',
       'mining_active': 'MINERÍA ACTIVA',
       'fan_balance': 'SALDO FAN EN VIVO',
-      'mining_rate': 'TASA DE MINERÍA',
-      'session_time': 'TIEMPO RESTANTE',
-      'daily_checkin': 'REGISTRO DIARIO',
-      'claim_daily': 'RECLAMAR REGISTRO (+2 FAN)',
-      'social_tasks': 'TAREAS SOCIALES (VERIFICACIÓN ESTRICTA)',
-      'kyc_tiers': 'NIVELES DE VERIFICACIÓN KYC',
-      'device_sec': 'Seguridad: 1 Dispositivo = 1 Cuenta',
-      'visit': 'VISITAR',
-      'confirm': 'CONFIRMAR',
-      'done': '✓ VERIFICADO',
-      'wallet': 'BILLETERA AFAM',
-      'referral': 'REFERIDOS',
-      'settings': 'AJUSTES',
-      'home': 'INICIO',
+      'remaining_time': 'TIEMPO RESTANTE',
       'logout': 'CERRAR SESIÓN',
     },
   };
@@ -121,7 +106,7 @@ class AppTranslations {
 }
 
 // ==========================================
-// AUTH SCREEN WITH FIREBASE AUTH
+// AUTH SCREEN (FIREBASE AUTH + FIRESTORE)
 // ==========================================
 class AuthScreen extends StatefulWidget {
   final String currentLanguage;
@@ -144,9 +129,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseDatabase _db = FirebaseDatabase.instance;
-
   Future<void> _submitAuth() async {
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
@@ -163,35 +145,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (isLogin) {
-        await _auth.signInWithEmailAndPassword(email: email, password: password);
-      } else {
-        UserCredential credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-        String uid = credential.user!.uid;
-
-        // Save User Data in Firebase Realtime Database
-        await _db.ref("users/$uid").set({
-          "username": username,
-          "email": email,
-          "fanBalance": 20.0,
-          "afamBalance": 0.0,
-          "dailyStreak": 0,
-          "kyc1": false,
-          "kyc2": false,
-          "lastMiningStart": 0,
-          "referrals": 0,
-        });
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MainNavigationHub(
-              currentLanguage: widget.currentLanguage,
-              onLanguageChanged: widget.onLanguageChanged,
-            ),
-          ),
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
         );
+      } else {
+        UserCredential credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        // Save User Data to Cloud Firestore
+        await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
+          'username': username,
+          'email': email,
+          'fanBalance': 20.0,
+          'lastMiningStart': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -235,8 +206,8 @@ class _AuthScreenState extends State<AuthScreen> {
               Center(
                 child: Column(
                   children: [
-                    const Icon(Icons.bolt_rounded, size: 70, color: Color(0xFF2E1065)),
-                    const SizedBox(height: 10),
+                    const Icon(FontAwesomeIcons.bolt, size: 60, color: Color(0xFF2E1065)),
+                    const SizedBox(height: 12),
                     Text(
                       isLogin ? AppTranslations.text(lang, 'welcome_back') : AppTranslations.text(lang, 'create_account'),
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B)),
@@ -312,7 +283,7 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 // ==========================================
-// MAIN HUB WITH FIREBASE REALTIME ENGINE
+// MAIN HUB WITH FIRESTORE
 // ==========================================
 class MainNavigationHub extends StatefulWidget {
   final String currentLanguage;
@@ -329,51 +300,32 @@ class MainNavigationHub extends StatefulWidget {
 }
 
 class _MainNavigationHubState extends State<MainNavigationHub> {
-  int _selectedIndex = 0;
   final User? user = FirebaseAuth.instance.currentUser;
-  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
 
-  String username = "User";
   double fanBalance = 20.0;
-  double afamBalance = 0.0;
-  int dailyStreak = 0;
-  bool kyc1 = false;
-  bool kyc2 = false;
   int lastMiningStart = 0;
-
   bool isMiningActive = false;
   int remainingSeconds = 86400;
   Timer? _tickerTimer;
 
-  // Strict Tasks Tracker
-  bool fbDone = false, ytDone = false, ttDone = false, xDone = false, tgDone = false, igDone = false;
-  bool fbVisited = false, ytVisited = false, ttVisited = false, xVisited = false, tgVisited = false, igVisited = false;
-
   @override
   void initState() {
     super.initState();
-    _loadUserDataFromFirebase();
+    _loadDataFromFirestore();
   }
 
-  void _loadUserDataFromFirebase() {
+  void _loadDataFromFirestore() async {
     if (user == null) return;
 
-    _dbRef.child("users/${user!.uid}").onValue.listen((event) {
-      if (event.snapshot.exists) {
-        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-        setState(() {
-          username = data["username"] ?? "User";
-          fanBalance = (data["fanBalance"] ?? 20.0).toDouble();
-          afamBalance = (data["afamBalance"] ?? 0.0).toDouble();
-          dailyStreak = data["dailyStreak"] ?? 0;
-          kyc1 = data["kyc1"] ?? false;
-          kyc2 = data["kyc2"] ?? false;
-          lastMiningStart = data["lastMiningStart"] ?? 0;
-        });
-
-        _checkMiningStatus();
-      }
-    });
+    DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+    if (doc.exists) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      setState(() {
+        fanBalance = (data['fanBalance'] ?? 20.0).toDouble();
+        lastMiningStart = data['lastMiningStart'] ?? 0;
+      });
+      _checkMiningStatus();
+    }
   }
 
   void _checkMiningStatus() {
@@ -399,45 +351,41 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
       if (remainingSeconds > 0) {
         setState(() {
           remainingSeconds--;
-          fanBalance += (0.4 / 3600.0); // 0.4 FAN per hour rate
+          fanBalance += (0.4 / 3600.0);
         });
       } else {
         timer.cancel();
         setState(() => isMiningActive = false);
-        _saveBalanceToFirebase();
+        _saveBalanceToFirestore();
       }
     });
   }
 
-  void _saveBalanceToFirebase() {
+  void _saveBalanceToFirestore() {
     if (user != null) {
-      _dbRef.child("users/${user!.uid}").update({"fanBalance": fanBalance});
+      FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
+        'fanBalance': fanBalance,
+      });
     }
   }
 
   void _startMiningSession() async {
     int nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (user != null) {
-      await _dbRef.child("users/${user!.uid}").update({
-        "lastMiningStart": nowSeconds,
+      await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
+        'lastMiningStart': nowSeconds,
+      });
+      setState(() {
+        lastMiningStart = nowSeconds;
       });
       _checkMiningStatus();
-    }
-  }
-
-  Future<void> _openSocialLink(String url, Function onVisited) async {
-    final Uri uri = Uri.parse(url);
-    if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      Future.delayed(const Duration(seconds: 4), () {
-        setState(() => onVisited());
-      });
     }
   }
 
   @override
   void dispose() {
     _tickerTimer?.cancel();
-    _saveBalanceToFirebase();
+    _saveBalanceToFirestore();
     super.dispose();
   }
 
@@ -452,33 +400,17 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('@$username', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
+                  Text(user?.email ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E1B4B))),
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.red),
-                    onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
-                      if (mounted) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AuthScreen(
-                              currentLanguage: widget.currentLanguage,
-                              onLanguageChanged: widget.onLanguageChanged,
-                            ),
-                          ),
-                        );
-                      }
-                    },
+                    onPressed: () => FirebaseAuth.instance.signOut(),
                   )
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Live Balance Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -497,14 +429,12 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Mining Control
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                 child: Column(
                   children: [
-                    Text(isMiningActive ? 'Time Remaining: $remainingSeconds sec' : 'Session Inactive', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(isMiningActive ? 'Remaining: $remainingSeconds sec' : 'Session Inactive', style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
